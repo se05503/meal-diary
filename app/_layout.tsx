@@ -3,5 +3,14 @@ import '../global.css';
 import { Stack } from 'expo-router';
 
 export default function Layout() {
-  return <Stack />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShadowVisible: false,
+        headerStyle: {
+          backgroundColor: '#ffffff',
+        },
+      }}
+    />
+  );
 }
