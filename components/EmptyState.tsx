@@ -3,10 +3,15 @@ import { Ionicons } from '@expo/vector-icons';
 
 export function EmptyState() {
   return (
-    <View className="flex-1 items-center pt-16">
-      <Ionicons name="restaurant-outline" size={64} color="#d1d5db" />
-      <Text className="mt-4 text-base text-gray-400">기록된 식단이 없습니다</Text>
-      <Text className="mt-1 text-sm text-gray-300">+ 버튼을 눌러 식단을 추가해보세요</Text>
+    <View className="flex-1 items-center pt-20">
+      {/* 원형 아이콘 배경 */}
+      <View className="mb-6 h-20 w-20 items-center justify-center rounded-full bg-gray-200">
+        <Ionicons name="add" size={32} color="#9ca3af" />
+      </View>
+
+      {/* 텍스트 */}
+      <Text className="text-base text-gray-400">기록이 없어요.</Text>
+      <Text className="mt-1 text-base text-gray-400">+ 버튼으로 추가해보세요.</Text>
     </View>
   );
 }

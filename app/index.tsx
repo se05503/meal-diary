@@ -1,57 +1,89 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Calendar } from '@/components/Calendar';
-import { EmptyState } from '@/components/EmptyState';
+import { MealList } from '@/components/MealList';
 import { FAB } from '@/components/FAB';
+import { AddMealSheet } from '@/components/AddMealSheet';
+import { useMealStore } from '@/stores/mealStore';
 import { formatDate, formatDateKorean } from '@/utils/date';
+import { Meal } from '@/types/meal';
 
 export default function Home() {
-  const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+  const router = useRouter();
+  const { markedDates, loadMeals, selectedDate, setSelectedDate } = useMealStore();
 
-  // TODO: 실제 데이터에서 기록이 있는 날짜들을 가져옴
-  const markedDates = new Set<string>();
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [editMeal, setEditMeal] = useState<Meal | null>(null);
+
+  useEffect(() => {
+    loadMeals();
+  }, []);
 
   const handleAddMeal = () => {
-    // TODO: 식단 추가 시트 열기
-    console.log('Add meal for', selectedDate);
+    setEditMeal(null);
+    setShowAddSheet(true);
+  };
+
+  const handleMealPress = (meal: Meal) => {
+    router.push({ pathname: '/meal/[id]', params: { id: meal.id } });
+  };
+
+  const handleMealEdit = (meal: Meal) => {
+    setEditMeal(meal);
+    setShowAddSheet(true);
+  };
+
+  const handleCloseSheet = () => {
+    setShowAddSheet(false);
+    setEditMeal(null);
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Stack.Screen
-        options={{
-          title: '식단 기록',
-          headerShown: true,
-          contentStyle: { backgroundColor: '#ffffff' },
-        }}
-      />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-      {/* 캘린더 */}
-      <Calendar
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        markedDates={markedDates}
-      />
+        {/* 타이틀 */}
+        <View className="border-b border-gray-200 bg-white px-4 py-4">
+          <Text className="text-2xl font-bold text-gray-900">오늘 뭐 먹었나요?</Text>
+        </View>
 
-      {/* 선택된 날짜 표시 */}
-      <View className="flex-1 px-4 pt-4">
-        <Text className="mb-2 text-base font-semibold text-gray-700">
-          {formatDateKorean(selectedDate)}
-        </Text>
+        {/* 캘린더 */}
+        <Calendar
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          markedDates={markedDates}
+        />
 
-        {/* TODO: 해당 날짜의 식단 리스트 */}
-        <EmptyState />
-      </View>
+        {/* 선택된 날짜의 식단 리스트 */}
+        <View className="flex-1 bg-gray-100 px-4 pt-4">
+          <MealList
+            date={selectedDate}
+            onMealPress={handleMealPress}
+            onMealEdit={handleMealEdit}
+          />
+        </View>
 
-      {/* FAB */}
-      <FAB onPress={handleAddMeal} />
+        {/* FAB */}
+        <FAB onPress={handleAddMeal} />
 
-      {/* TODO: AdMob 배너 위치 */}
-      <View className="h-14 items-center justify-center bg-gray-200">
-        <Text className="text-xs text-gray-500">AdMob 배너 영역</Text>
-      </View>
-    </View>
+        {/* AdMob 배너 영역 */}
+        <View className="h-14 items-center justify-center bg-gray-100">
+          <Text className="text-sm text-gray-400">Ad Banner</Text>
+        </View>
+
+        {/* 식단 추가/수정 시트 */}
+        <AddMealSheet
+          visible={showAddSheet}
+          onClose={handleCloseSheet}
+          editMeal={editMeal}
+          initialDate={selectedDate}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }

@@ -40,6 +40,12 @@ export function Calendar({ selectedDate, onSelectDate, markedDates }: CalendarPr
   const handleDayPress = (dayInfo: DayInfo) => {
     const dateString = formatDate(new Date(dayInfo.year, dayInfo.month, dayInfo.day));
     onSelectDate(dateString);
+
+    // 다른 달 날짜를 누르면 해당 월로 이동
+    if (!dayInfo.isCurrentMonth) {
+      setCurrentYear(dayInfo.year);
+      setCurrentMonth(dayInfo.month);
+    }
   };
 
   const renderDay = (dayInfo: DayInfo, index: number) => {
@@ -49,14 +55,14 @@ export function Calendar({ selectedDate, onSelectDate, markedDates }: CalendarPr
     const hasRecord = markedDates?.has(dateString);
 
     return (
-      <TouchableOpacity
-        key={`day-${index}`}
-        className={`h-10 flex-1 items-center justify-center rounded-full ${
-          isSelected ? 'bg-blue-500' : ''
-        }`}
-        onPress={() => handleDayPress(dayInfo)}>
+      <View key={`day-${index}`} className="flex-1 items-center justify-center">
+        <TouchableOpacity
+          className={`h-11 w-11 items-center justify-center rounded-lg ${
+            isSelected ? 'bg-gray-800' : ''
+          }`}
+          onPress={() => handleDayPress(dayInfo)}>
         <Text
-          className={`text-sm ${
+          className={`text-base ${
             isSelected
               ? 'font-bold text-white'
               : !dayInfo.isCurrentMonth
@@ -67,10 +73,11 @@ export function Calendar({ selectedDate, onSelectDate, markedDates }: CalendarPr
           }`}>
           {dayInfo.day}
         </Text>
-        {hasRecord && !isSelected && dayInfo.isCurrentMonth && (
-          <View className="absolute bottom-1 h-1 w-1 rounded-full bg-blue-500" />
-        )}
-      </TouchableOpacity>
+          {hasRecord && !isSelected && dayInfo.isCurrentMonth && (
+            <View className="absolute bottom-1.5 h-1 w-1 rounded-full bg-blue-500" />
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -81,27 +88,29 @@ export function Calendar({ selectedDate, onSelectDate, markedDates }: CalendarPr
   }
 
   return (
-    <View className="bg-white px-4 pb-2">
-      {/* 헤더: 년월 + 네비게이션 */}
-      <View className="mb-4 flex-row items-center justify-between">
-        <TouchableOpacity onPress={goToPrevMonth} className="p-2">
-          <Ionicons name="chevron-back" size={24} color="#6b7280" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-800">
+    <View className="bg-white px-4 py-4">
+      {/* 헤더: 년월 (좌측) + 네비게이션 (우측) */}
+      <View className="mb-6 flex-row items-center justify-between">
+        <Text className="text-2xl font-bold text-gray-900">
           {currentYear}년 {getMonthName(currentMonth)}
         </Text>
-        <TouchableOpacity onPress={goToNextMonth} className="p-2">
-          <Ionicons name="chevron-forward" size={24} color="#6b7280" />
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity onPress={goToPrevMonth} className="p-1">
+            <Ionicons name="chevron-back" size={24} color="#6b7280" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={goToNextMonth} className="p-1">
+            <Ionicons name="chevron-forward" size={24} color="#6b7280" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 요일 헤더 */}
-      <View className="mb-2 flex-row">
+      <View className="mb-3 flex-row">
         {WEEKDAYS.map((day, index) => (
-          <View key={day} className="flex-1 items-center">
+          <View key={day} className="mx-1 flex-1 items-center">
             <Text
-              className={`text-xs font-medium ${
-                index === 0 ? 'text-red-400' : index === 6 ? 'text-blue-400' : 'text-gray-500'
+              className={`text-sm font-medium ${
+                index === 0 ? 'text-red-400' : index === 6 ? 'text-blue-400' : 'text-gray-400'
               }`}>
               {day}
             </Text>
@@ -111,7 +120,7 @@ export function Calendar({ selectedDate, onSelectDate, markedDates }: CalendarPr
 
       {/* 날짜 그리드 */}
       {weeks.map((week, weekIndex) => (
-        <View key={`week-${weekIndex}`} className="flex-row">
+        <View key={`week-${weekIndex}`} className="mb-1 flex-row">
           {week.map((dayInfo, dayIndex) => renderDay(dayInfo, weekIndex * 7 + dayIndex))}
         </View>
       ))}
