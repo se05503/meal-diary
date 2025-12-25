@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
 import { Meal } from '@/types/meal';
 
 const DATABASE_NAME = 'meal-diary.db';
@@ -41,6 +41,48 @@ export const getDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
   return dbInitPromise;
 };
 
+export const generateId = (): string => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+};
+
+// Image utilities
+const IMAGES_DIR_NAME = 'images';
+
+export const ensureImagesDir = (): Directory => {
+  const imagesDir = new Directory(Paths.document, IMAGES_DIR_NAME);
+
+  if (!imagesDir.exists) {
+    imagesDir.create();
+  }
+
+  return imagesDir;
+};
+
+export const saveImage = async (sourceUri: string): Promise<string> => {
+  const imagesDir = ensureImagesDir();
+  const filename = `${generateId()}.jpg`;
+  const destFile = new File(imagesDir, filename);
+
+  // 소스 파일에서 base64로 읽고 저장
+  const sourceFile = new File(sourceUri);
+  const base64 = await sourceFile.base64();
+  destFile.write(base64, { encoding: 'base64' });
+
+  return destFile.uri;
+};
+
+export const deleteImage = (uri: string): void => {
+  try {
+    const file = new File(uri);
+    if (file.exists) {
+      file.delete();
+    }
+  } catch (error) {
+    console.warn('Failed to delete image:', error);
+  }
+};
+
+// Meal CRUD operations
 export const getAllMeals = async (): Promise<Meal[]> => {
   const database = await getDatabase();
   const result = await database.getAllAsync<Meal>('SELECT * FROM meals ORDER BY date DESC, time DESC');
@@ -86,11 +128,7 @@ export const deleteMeal = async (id: string): Promise<void> => {
   // Get meal to delete associated photo
   const meal = await getMealById(id);
   if (meal?.photoUri) {
-    try {
-      await FileSystem.deleteAsync(meal.photoUri, { idempotent: true });
-    } catch (error) {
-      console.warn('Failed to delete photo:', error);
-    }
+    await deleteImage(meal.photoUri);
   }
 
   await database.runAsync('DELETE FROM meals WHERE id = ?', [id]);
@@ -100,8 +138,4 @@ export const getMarkedDates = async (): Promise<Set<string>> => {
   const database = await getDatabase();
   const result = await database.getAllAsync<{ date: string }>('SELECT DISTINCT date FROM meals');
   return new Set(result.map((r) => r.date));
-};
-
-export const generateId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };

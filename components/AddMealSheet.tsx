@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 
 import { Meal, MealType, MEAL_TYPES } from '@/types/meal';
 import { useMealStore } from '@/stores/mealStore';
-import { generateId } from '@/services/database';
+import { generateId, saveImage, deleteImage } from '@/services/database';
 import { formatDate, formatTime } from '@/utils/date';
 
 type AddMealSheetProps = {
@@ -33,6 +34,7 @@ export function AddMealSheet({ visible, onClose, editMeal, initialDate }: AddMea
   const [time, setTime] = useState(new Date());
   const [mealType, setMealType] = useState<MealType>('아침');
   const [photoUri, setPhotoUri] = useState<string | undefined>();
+  const [originalPhotoUri, setOriginalPhotoUri] = useState<string | undefined>();
   const [note, setNote] = useState('');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -48,6 +50,7 @@ export function AddMealSheet({ visible, onClose, editMeal, initialDate }: AddMea
         setTime(new Date(2000, 0, 1, hours, minutes));
         setMealType(editMeal.mealType);
         setPhotoUri(editMeal.photoUri);
+        setOriginalPhotoUri(editMeal.photoUri);
         setNote(editMeal.note || '');
       } else {
         const now = new Date();
@@ -60,14 +63,30 @@ export function AddMealSheet({ visible, onClose, editMeal, initialDate }: AddMea
         setTime(now);
         setMealType('아침');
         setPhotoUri(undefined);
+        setOriginalPhotoUri(undefined);
         setNote('');
       }
     }
   }, [visible, editMeal, initialDate]);
 
-  const handleSelectPhoto = () => {
-    // TODO: Implement image picker
-    Alert.alert('알림', '이미지 선택 기능은 추후 구현됩니다.');
+  const handleSelectPhoto = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
   };
 
   const handleRemovePhoto = () => {
@@ -77,12 +96,29 @@ export function AddMealSheet({ visible, onClose, editMeal, initialDate }: AddMea
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
+      let savedPhotoUri = photoUri;
+
+      // 새 이미지가 선택된 경우 (기존 이미지와 다른 경우)
+      if (photoUri && photoUri !== originalPhotoUri) {
+        // 새 이미지를 앱 내부 저장소에 저장
+        savedPhotoUri = await saveImage(photoUri);
+
+        // 기존 이미지가 있었다면 삭제
+        if (originalPhotoUri) {
+          await deleteImage(originalPhotoUri);
+        }
+      } else if (!photoUri && originalPhotoUri) {
+        // 이미지가 제거된 경우 기존 이미지 삭제
+        await deleteImage(originalPhotoUri);
+        savedPhotoUri = undefined;
+      }
+
       const mealData: Meal = {
         id: editMeal?.id || generateId(),
         date: formatDate(date),
         time: formatTime(time),
         mealType,
-        photoUri,
+        photoUri: savedPhotoUri,
         note: note.trim() || undefined,
         createdAt: editMeal?.createdAt || Date.now(),
         updatedAt: Date.now(),
@@ -96,6 +132,7 @@ export function AddMealSheet({ visible, onClose, editMeal, initialDate }: AddMea
 
       onClose();
     } catch (error) {
+      console.error('Save error:', error);
       Alert.alert('오류', '저장에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
